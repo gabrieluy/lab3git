@@ -9,7 +9,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Monad.Trans.State.Lazy
 import Data.Maybe
---import Control.Monad.State
+import Control.Monad
 
 type FunType = String
 

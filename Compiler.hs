@@ -89,7 +89,16 @@ compileProg (PBlock (Ident name) varPart stms) = do
   emit $ ".end method"
   emit ""
 
-compileStm :: Stm -> State Env ()
+compileStm :: Stm -> State Env () 
+compileStm (SAss ident (ETyped exp ty)) = do 
+                                              dirMem <- lookupVar ident;
+                                              compileExp (ETyped exp ty)
+                                              case ty of 
+                                                Type_integer -> emit $ "istore " ++ dirMem
+                                                Type_real ->  emit $ "dstore " ++ dirMem
+                                                Type_bool -> emit $ "istore " ++ dirMem
+                                                Type_string -> emit $ "astore " ++ dirMem
+
 compileStm stm                         = error $ "Caso de instruccion sin implementar = " ++ show stm
 
 data Cmp = CEq | CDiff | CLe | CLeq | CGeq | CGt
@@ -137,4 +146,14 @@ showOpBinBool And = "ifne "
 showOpBinBool Or  = "ifeq "
 
 compileExp :: Exp -> State Env ()
+compileExp (ETyped (EInt n) _) = emit $ "ldc " ++ show n
+compileExp (ETyped (EStr str) _) = emit $ "ldc " ++ str
+compileExp ( ETyped ( EIdent x)  ty ) = do
+                                        dirrM <- lookupVar x
+                                        case ty of 
+                                          Type_integer -> emit $ "iload " ++ dirrM 
+                                          Type_real ->  emit $ "dload " ++ dirMem
+                                          Type_bool -> emit $ "iload " ++ dirMem
+                                          Type_string -> emit $ "aload " ++ dirMem 
+
 compileExp e                         = error $ "Caso de expresion sin implementar = " ++ show e
