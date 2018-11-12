@@ -1,0 +1,82 @@
+--------------------------------------------------------------------------------
+-- Program
+--------------------------------------------------------------------------------
+
+PBlock.         Program ::= "program" Ident ";" VarPart "begin" [ Stm ] "end" "." ;
+
+--------------------------------------------------------------------------------
+-- Type
+--------------------------------------------------------------------------------
+
+rules           Type ::= "bool" | "integer" | "real" | "string";
+
+--------------------------------------------------------------------------------
+-- VarPart
+--------------------------------------------------------------------------------
+
+VPart.		VarPart ::= "var" [ VarDecl ] ;
+VPartEmpty.	VarPart ::= ;
+
+VDecl.          VarDecl ::= [ Ident ] ":" Type ;
+
+terminator nonempty VarDecl ";" ;
+separator  nonempty Ident   "," ;
+--------------------------------------------------------------------------------
+-- Stm
+--------------------------------------------------------------------------------
+
+SAss.		Stm ::= Ident ":=" Exp ;
+SCall.          Stm ::= Ident "(" [ Exp ] ")" ;
+SCallEmpty.     Stm ::= Ident ;
+SRepeat.	Stm ::= "repeat" Stm "until" Exp ;
+SWhile.		Stm ::= "while" Exp "do" Stm ;
+SBlock.		Stm ::= "begin" [ Stm ] "end" ;
+SFor.		Stm ::= "for" Ident ":=" Exp "to" Exp "do" Stm ;
+SIf.		Stm ::= "if" Exp "then" Stm "else" Stm ;
+SEmpty.         Stm ::= ;        
+
+separator nonempty Stm ";" ;
+separator nonempty Exp "," ;
+--------------------------------------------------------------------------------
+-- Exp
+--------------------------------------------------------------------------------
+internal ETyped. Exp   ::= "[" Exp ":" Type "]" ;
+internal EConv.  Exp   ::= "(" Exp  ")" ;
+
+EEq.		 Exp  ::= Exp "="    Exp1 ;
+EDiff.		 Exp  ::= Exp "<>"   Exp1 ;
+ELe.		 Exp  ::= Exp "<"    Exp1 ;
+ELeq.		 Exp  ::= Exp "<="   Exp1 ;
+EGeq.		 Exp  ::= Exp ">="   Exp1 ;
+EGe.		 Exp  ::= Exp ">"    Exp1 ;
+
+EPlus.		 Exp1 ::= Exp1 "+"   Exp2 ;
+ESubst.		 Exp1 ::= Exp1 "-"   Exp2 ;
+EOr.		 Exp1 ::= Exp1 "or"  Exp2 ;
+
+EMul.		 Exp2 ::= Exp2 "*"   Exp3 ;
+EDiv.		 Exp2 ::= Exp2 "/"   Exp3 ;
+EAnd.		 Exp2 ::= Exp2 "and" Exp3 ;
+EMod.		 Exp2 ::= Exp2 "mod" Exp3 ;
+EDiv2.		 Exp2 ::= Exp2 "div" Exp3 ;
+
+ECall.           Exp3 ::= Ident "(" [ Exp ] ")" ;
+ECallEmpty.      Exp3 ::= Ident "(" ")" ;
+
+ENot.		 Exp3 ::= "not" Exp3 ;
+ENegNum.	 Exp3 ::= "-" Exp3 ;
+EPlusNum.	 Exp3 ::= "+" Exp3 ;
+EIdent.		 Exp3 ::= Ident ;
+EStr.		 Exp3 ::= String ;
+EInt.		 Exp3 ::= Integer ;
+EReal.		 Exp3 ::= Double ;
+ETrue.		 Exp3 ::= "true";
+EFalse.	         Exp3 ::= "false";
+
+coercions Exp 3 ;
+
+--------------------------------------------------------------------------------
+-- Comment
+--------------------------------------------------------------------------------
+
+comment "(*" "*)" ;
