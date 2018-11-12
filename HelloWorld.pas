@@ -1,4 +1,8 @@
 program HelloWord;
+var x : integer;
 begin
-    writeStr("Hello world")
+    x := 23;
+    writeInt(x);
+
+
 end.

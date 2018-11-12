@@ -91,13 +91,21 @@ compileProg (PBlock (Ident name) varPart stms) = do
 
 compileStm :: Stm -> State Env () 
 compileStm (SAss ident (ETyped exp ty)) = do 
-                                              dirMem <- lookupVar ident;
-                                              compileExp (ETyped exp ty)
-                                              case ty of 
-                                                Type_integer -> emit $ "istore " ++ dirMem
-                                                Type_real ->  emit $ "dstore " ++ dirMem
-                                                Type_bool -> emit $ "istore " ++ dirMem
-                                                Type_string -> emit $ "astore " ++ dirMem
+                                            dirMem <- lookupVar ident
+                                            compileExp (ETyped exp ty)
+                                            case ty of 
+                                              Type_integer -> emit $ "istore " ++ dirMem
+                                              Type_real ->  emit $ "dstore " ++ dirMem
+                                              Type_bool -> emit $ "istore " ++ dirMem
+                                              Type_string -> emit $ "astore " ++ dirMem
+compileStm (SCall ident exps)           = do
+                                            mapM_ compileExp exps
+                                            dirMem <- lookupFun ident
+                                            emit dirMem
+compileStm (SCallEmpty ident)           = do                                            
+                                            dirMem <- lookupFun ident
+                                            emit dirMem
+compileStm (SEmpty)                     = return ()
 
 compileStm stm                         = error $ "Caso de instruccion sin implementar = " ++ show stm
 
@@ -146,14 +154,28 @@ showOpBinBool And = "ifne "
 showOpBinBool Or  = "ifeq "
 
 compileExp :: Exp -> State Env ()
-compileExp (ETyped (EInt n) _) = emit $ "ldc " ++ show n
-compileExp (ETyped (EStr str) _) = emit $ "ldc " ++ str
-compileExp ( ETyped ( EIdent x)  ty ) = do
-                                        dirrM <- lookupVar x
+
+
+compileExp ( ETyped ( EDiv2 exp1 exp2)  ty ) = undefined;
+compileExp ( ETyped ( ECall ident exps)  ty ) = undefined;
+compileExp ( ETyped ( ECallEmpty exp)  ty ) = undefined;
+compileExp ( ETyped ( ENot exp)  ty ) = undefined;
+compileExp ( ETyped ( ENegNum exp)  ty ) = undefined;
+compileExp ( ETyped ( EPlusNum exp)  ty ) = undefined;
+compileExp ( ETyped ( EIdent ident)  ty ) = do
+                                        dirMem <- lookupVar ident
                                         case ty of 
-                                          Type_integer -> emit $ "iload " ++ dirrM 
+                                          Type_integer -> emit $ "iload " ++ dirMem 
                                           Type_real ->  emit $ "dload " ++ dirMem
                                           Type_bool -> emit $ "iload " ++ dirMem
-                                          Type_string -> emit $ "aload " ++ dirMem 
-
+                                          Type_string -> emit $ "aload " ++ dirMem                                   
+compileExp (ETyped (EStr str) _) = emit $ "ldc " ++ str
+compileExp (ETyped (EInt int) _) = emit $ "ldc " ++ show int
+compileExp (ETyped (EReal real) ty) = emit $ "ldc2_w " ++ show real
+compileExp (ETyped ETrue ty) = emit $ "ldc 1"
+compileExp (ETyped EFalse ty) = emit $ "ldc 0"
 compileExp e                         = error $ "Caso de expresion sin implementar = " ++ show e
+ 
+
+--java -jar jasmin.jar HelloWorld.j
+--java HelloWorld
