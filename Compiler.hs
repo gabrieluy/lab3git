@@ -105,9 +105,54 @@ compileStm (SCall ident exps)           = do
 compileStm (SCallEmpty ident)           = do                                            
                                             dirMem <- lookupFun ident
                                             emit dirMem
-compileStm (SEmpty)                     = return ()
+compileStm (SRepeat stm exp)            = do
+                                            test <- newLabel
+                                            end <- newLabel
+                                            emit $ test ++ ":"
+                                            compileStm stm
+                                            compileExp exp
+                                            emit $ "ifeq " ++ end
+                                            emit $ "goto " ++ test
+                                            emit $ end ++ ":"
+compileStm (SWhile exp stm)             = do
+                                            test <- newLabel
+                                            end <- newLabel
+                                            emit $ test ++ ":"
+                                            compileExp exp
+                                            emit $ "ifeq " ++ end
+                                            compileStm stm
+                                            emit $ "goto " ++ test
+                                            emit $ end ++ ":"
+compileStm (SBlock stms)                = mapM_ compileStm stms;
+compileStm (SFor ident exp1 exp2 stm)   = do
+                                            test <- newLabel
+                                            end <- newLabel
+                                            dirMem <- lookupVar ident
+                                            compileExp exp1
+                                            emit $ "istore " ++ dirMem
+                                            emit $ test ++ ":"
+                                            emit $ "iload " ++ dirMem
+                                            compileExp exp2 
+                                            emit $ "if_icmpgt " ++ end
+                                            compileStm stm
+                                            emit $ "iload " ++ dirMem
+                                            emit $ "bipush 1"
+                                            emit $ "iadd"
+                                            emit $ "istore " ++ dirMem
+                                            emit $ "goto " ++ test
+                                            emit $ end ++ ":"
+compileStm (SIf exp stm1 stm2)          = do
+                                            false <- newLabel
+                                            true <- newLabel
+                                            compileExp exp
+                                            emit $ "ifeq " ++ false
+                                            compileStm stm1
+                                            emit $ "goto " ++ true
+                                            emit $ false ++ ":"
+                                            compileStm stm2
+                                            emit $ true ++ ":"
 
-compileStm stm                         = error $ "Caso de instruccion sin implementar = " ++ show stm
+compileStm (SEmpty)                     = return ()
 
 data Cmp = CEq | CDiff | CLe | CLeq | CGeq | CGt
 
@@ -150,32 +195,94 @@ data OpBinBool = And | Or
   deriving Eq
 
 showOpBinBool :: OpBinBool -> String
-showOpBinBool And = "ifne "
-showOpBinBool Or  = "ifeq "
+showOpBinBool And = "ifeq "
+showOpBinBool Or  = "ifne "
 
 compileExp :: Exp -> State Env ()
 
-
-compileExp ( ETyped ( EDiv2 exp1 exp2)  ty ) = undefined;
-compileExp ( ETyped ( ECall ident exps)  ty ) = undefined;
-compileExp ( ETyped ( ECallEmpty exp)  ty ) = undefined;
-compileExp ( ETyped ( ENot exp)  ty ) = undefined;
-compileExp ( ETyped ( ENegNum exp)  ty ) = undefined;
-compileExp ( ETyped ( EPlusNum exp)  ty ) = undefined;
-compileExp ( ETyped ( EIdent ident)  ty ) = do
-                                        dirMem <- lookupVar ident
-                                        case ty of 
-                                          Type_integer -> emit $ "iload " ++ dirMem 
-                                          Type_real ->  emit $ "dload " ++ dirMem
-                                          Type_bool -> emit $ "iload " ++ dirMem
-                                          Type_string -> emit $ "aload " ++ dirMem                                   
-compileExp (ETyped (EStr str) _) = emit $ "ldc " ++ str
-compileExp (ETyped (EInt int) _) = emit $ "ldc " ++ show int
-compileExp (ETyped (EReal real) ty) = emit $ "ldc2_w " ++ show real
-compileExp (ETyped ETrue ty) = emit $ "ldc 1"
-compileExp (ETyped EFalse ty) = emit $ "ldc 0"
-compileExp e                         = error $ "Caso de expresion sin implementar = " ++ show e
+compileExp ( ETyped ( EConv exp )  ty )       = undefined
+compileExp ( ETyped ( EEq exp1 exp2)  _ )     = compileExpCompare CEq exp1 exp2
+compileExp ( ETyped ( EDiff exp1 exp2)  _ )   = compileExpCompare CDiff exp1 exp2
+compileExp ( ETyped ( ELe exp1 exp2)  _ )     = compileExpCompare CLe exp1 exp2
+compileExp ( ETyped ( ELeq exp1 exp2)  _ )    = compileExpCompare CLeq exp1 exp2
+compileExp ( ETyped ( EGeq exp1 exp2)  _ )    = compileExpCompare CGeq exp1 exp2
+compileExp ( ETyped ( EGe exp1 exp2)  _ )     = compileExpCompare CGt exp1 exp2
+compileExp ( ETyped ( EPlus exp1 exp2)  ty )  = compileExpAritmeticas exp1 exp2 ty Plus
+compileExp ( ETyped ( ESubst exp1 exp2)  ty ) = compileExpAritmeticas exp1 exp2 ty Subst
+compileExp ( ETyped ( EOr exp1 exp2)  ty )    = compileExpBool Or exp1 exp2
+compileExp ( ETyped ( EMul exp1 exp2)  ty )   = compileExpAritmeticas exp1 exp2 ty Mul
+compileExp ( ETyped ( EDiv exp1 exp2)  ty )   = undefined
+compileExp ( ETyped ( EAnd exp1 exp2)  ty )   = compileExpBool And exp1 exp2
+compileExp ( ETyped ( EMod exp1 exp2)  ty )   = undefined
+compileExp ( ETyped ( EDiv2 exp1 exp2)  ty )  = undefined
+compileExp ( ETyped ( ECall ident exps)  ty ) = undefined
+compileExp ( ETyped ( ECallEmpty exp)  ty )   = undefined
+compileExp ( ETyped ( ENot exp)  ty )         = undefined
+compileExp ( ETyped ( ENegNum exp)  ty )      = undefined
+compileExp ( ETyped ( EPlusNum exp)  ty )     = undefined
+compileExp ( ETyped ( EIdent ident)  ty )     = do
+                                                  dirMem <- lookupVar ident
+                                                  case ty of 
+                                                    Type_integer -> emit $ "iload " ++ dirMem 
+                                                    Type_real ->  emit $ "dload " ++ dirMem
+                                                    Type_bool -> emit $ "iload " ++ dirMem
+                                                    Type_string -> emit $ "aload " ++ dirMem                                   
+compileExp (ETyped (EStr str) _)              = emit $ "ldc " ++ str
+compileExp (ETyped (EInt int) _)              = emit $ "ldc " ++ show int
+compileExp (ETyped (EReal real) ty)           = emit $ "ldc2_w " ++ show real
+compileExp (ETyped ETrue ty)                  = emit $ "ldc 1"
+compileExp (ETyped EFalse ty)                 = emit $ "ldc 0"
  
+compileExpAritmeticas :: Exp -> Exp -> Type -> OpBin -> State Env ()
+compileExpAritmeticas exp1 exp2 ty op = do
+                                          compileExp exp1
+                                          compileExp exp2
+                                          if (ty == Type_integer) then
+                                            emit $ showOpBinInt op
+                                          else if (ty == Type_real) then
+                                            emit $ showOpBinReal op
+                                          else
+                                            error "Caso imposible"
+
+
+compileExpCompare :: Cmp -> Exp -> Exp -> State Env ()
+compileExpCompare cmp (ETyped exp1 ty1) exp2 = do -- solo necesito un tipo por el typechecker
+                                                  true <- newLabel
+                                                  emit $ "bipush 1"
+                                                  compileExp (ETyped exp1 ty1)
+                                                  compileExp exp2
+                                                  if (ty1 == Type_integer) then
+                                                    emit $ showCmpInt cmp ++ true
+                                                  else if (ty1 == Type_real) then do
+                                                    emit $ "dcmpg"
+                                                    emit $ showCmpReal cmp ++ true
+                                                  else
+                                                    error "Caso imposible"
+                                                  emit $ "pop"
+                                                  emit $ "bipush 0"
+                                                  emit $ true ++ ":"
+
+compileExpBool :: OpBinBool -> Exp -> Exp -> State Env ()
+compileExpBool Or exp1 exp2   = do 
+                                  end <- newLabel
+                                  emit $ "bipush 1"
+                                  compileExp exp1
+                                  emit $ showOpBinBool Or ++ end
+                                  compileExp exp2
+                                  emit $ showOpBinBool Or ++ end
+                                  emit $ "pop"
+                                  emit $ "bipush 0"
+                                  emit $ end ++ ":"
+compileExpBool And exp1 exp2  = do 
+                                  end <- newLabel
+                                  emit $ "bipush 0"
+                                  compileExp exp1
+                                  emit $ showOpBinBool And ++ end
+                                  compileExp exp2
+                                  emit $ showOpBinBool And ++ end
+                                  emit $ "pop"
+                                  emit $ "bipush 1"
+                                  emit $ end ++ ":"                                                 
 
 --java -jar jasmin.jar HelloWorld.j
 --java HelloWorld

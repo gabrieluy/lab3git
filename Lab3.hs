@@ -84,7 +84,7 @@ mainOpts dirs = do
 --
 
 -- | Executable name
-executable_name = "cpas" -- cpas.exe in windows
+executable_name = "cpas.exe" -- cpas.exe in windows
 
 -- | Run "make" in given directory.
 runMake :: FilePath -> IO ()
@@ -122,7 +122,7 @@ testBackendProg prog f = do
     javaClassFileCreated <- doesFileExist expectedJavaClassFilePath
     if javaClassFileCreated then do
       -- Run code
-      let javaCommand = "java -noverify -cp .:" ++ takeDirectory f ++ " " ++ takeBaseName f
+      let javaCommand = "java -noverify -cp .;" ++ takeDirectory f ++ " " ++ takeBaseName f
       (javaOut, javaErr, javaRet) <- runCommandStrWait javaCommand input
       if isExitFailure javaRet then do
         reportError javaCommand "non-zero exit code" f input javaOut javaErr
