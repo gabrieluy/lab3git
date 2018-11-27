@@ -1,3 +1,4 @@
+-- Ivan Aneff 162693 , Gabriel Nuñez 153602 
 module Compiler where
 
 import AbsPascal
@@ -201,8 +202,8 @@ showOpBinBool Or  = "ifne "
 compileExp :: Exp -> State Env ()
 
 compileExp ( ETyped ( EConv exp )  ty )       = do 
-                                                 compileExp exp
-                                                 emit $ "i2d"
+                                                  compileExp exp
+                                                  emit $ "i2d"
 compileExp ( ETyped ( EEq exp1 exp2)  _ )     = compileExpCompare CEq exp1 exp2
 compileExp ( ETyped ( EDiff exp1 exp2)  _ )   = compileExpCompare CDiff exp1 exp2
 compileExp ( ETyped ( ELe exp1 exp2)  _ )     = compileExpCompare CLe exp1 exp2
@@ -213,17 +214,17 @@ compileExp ( ETyped ( EPlus exp1 exp2)  ty )  = compileExpAritmeticas exp1 exp2 
 compileExp ( ETyped ( ESubst exp1 exp2)  ty ) = compileExpAritmeticas exp1 exp2 ty Subst
 compileExp ( ETyped ( EOr exp1 exp2)  ty )    = compileExpBool Or exp1 exp2
 compileExp ( ETyped ( EMul exp1 exp2)  ty )   = compileExpAritmeticas exp1 exp2 ty Mul
-compileExp ( ETyped ( EDiv exp1 exp2)  ty )   = compileExpAritmeticas exp1 exp2 ty Div --revisar
+compileExp ( ETyped ( EDiv exp1 exp2)  ty )   = compileExpAritmeticas exp1 exp2 ty Div
 compileExp ( ETyped ( EAnd exp1 exp2)  ty )   = compileExpBool And exp1 exp2
-compileExp ( ETyped ( EMod exp1 exp2)  ty )   = compileExpAritmeticas exp1 exp2 ty Mod --revisar
-compileExp ( ETyped ( EDiv2 exp1 exp2)  ty )  = compileExpAritmeticas exp1 exp2 ty Div2 --revisar
+compileExp ( ETyped ( EMod exp1 exp2)  ty )   = compileExpAritmeticas exp1 exp2 ty Mod
+compileExp ( ETyped ( EDiv2 exp1 exp2)  ty )  = compileExpAritmeticas exp1 exp2 ty Div2
 compileExp ( ETyped ( ECall ident exps)  ty ) = do 
-                                                mapM_ compileExp exps
-                                                dirMem <- lookupFun ident
-                                                emit dirMem                                       
+                                                  mapM_ compileExp exps
+                                                  dirMem <- lookupFun ident
+                                                  emit dirMem                                       
 compileExp ( ETyped ( ECallEmpty ident)  ty ) = do 
-                                                dirMem <- lookupFun ident
-                                                emit dirMem   
+                                                  dirMem <- lookupFun ident
+                                                  emit dirMem   
 compileExp ( ETyped ( ENot exp)  ty )         = compileNotExp exp
 compileExp ( ETyped ( ENegNum exp)  ty )      = compileNegNumExp exp
 compileExp ( ETyped ( EPlusNum exp)  ty )     = compileExp exp                                             
@@ -309,10 +310,3 @@ compileExpBool And exp1 exp2  = do
                                   emit $ "pop"
                                   emit $ "bipush 1"
                                   emit $ end ++ ":"                                                 
-
---java -jar jasmin.jar HelloWorld.j
---java HelloWorld
-
--- ./cpas good/Good01.pas
--- java -jar jasmin.jar good/Good01.j
--- java Good01
