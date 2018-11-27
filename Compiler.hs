@@ -111,8 +111,8 @@ compileStm (SRepeat stm exp)            = do
                                             emit $ test ++ ":"
                                             compileStm stm
                                             compileExp exp
-                                            emit $ "ifeq " ++ end
-                                            emit $ "goto " ++ test
+                                            emit $ "ifeq " ++ test
+                                            emit $ "goto " ++ end
                                             emit $ end ++ ":"
 compileStm (SWhile exp stm)             = do
                                             test <- newLabel
@@ -200,7 +200,9 @@ showOpBinBool Or  = "ifne "
 
 compileExp :: Exp -> State Env ()
 
-compileExp ( ETyped ( EConv exp )  ty )       = undefined
+compileExp ( ETyped ( EConv exp )  ty )       = do 
+                                                 compileExp exp
+                                                 emit $ "i2d"
 compileExp ( ETyped ( EEq exp1 exp2)  _ )     = compileExpCompare CEq exp1 exp2
 compileExp ( ETyped ( EDiff exp1 exp2)  _ )   = compileExpCompare CDiff exp1 exp2
 compileExp ( ETyped ( ELe exp1 exp2)  _ )     = compileExpCompare CLe exp1 exp2
@@ -211,15 +213,20 @@ compileExp ( ETyped ( EPlus exp1 exp2)  ty )  = compileExpAritmeticas exp1 exp2 
 compileExp ( ETyped ( ESubst exp1 exp2)  ty ) = compileExpAritmeticas exp1 exp2 ty Subst
 compileExp ( ETyped ( EOr exp1 exp2)  ty )    = compileExpBool Or exp1 exp2
 compileExp ( ETyped ( EMul exp1 exp2)  ty )   = compileExpAritmeticas exp1 exp2 ty Mul
-compileExp ( ETyped ( EDiv exp1 exp2)  ty )   = undefined
+compileExp ( ETyped ( EDiv exp1 exp2)  ty )   = compileExpAritmeticas exp1 exp2 ty Div --revisar
 compileExp ( ETyped ( EAnd exp1 exp2)  ty )   = compileExpBool And exp1 exp2
-compileExp ( ETyped ( EMod exp1 exp2)  ty )   = undefined
-compileExp ( ETyped ( EDiv2 exp1 exp2)  ty )  = undefined
-compileExp ( ETyped ( ECall ident exps)  ty ) = undefined
-compileExp ( ETyped ( ECallEmpty exp)  ty )   = undefined
-compileExp ( ETyped ( ENot exp)  ty )         = undefined
-compileExp ( ETyped ( ENegNum exp)  ty )      = undefined
-compileExp ( ETyped ( EPlusNum exp)  ty )     = undefined
+compileExp ( ETyped ( EMod exp1 exp2)  ty )   = compileExpAritmeticas exp1 exp2 ty Mod --revisar
+compileExp ( ETyped ( EDiv2 exp1 exp2)  ty )  = compileExpAritmeticas exp1 exp2 ty Div2 --revisar
+compileExp ( ETyped ( ECall ident exps)  ty ) = do 
+                                                mapM_ compileExp exps
+                                                dirMem <- lookupFun ident
+                                                emit dirMem                                       
+compileExp ( ETyped ( ECallEmpty ident)  ty ) = do 
+                                                dirMem <- lookupFun ident
+                                                emit dirMem   
+compileExp ( ETyped ( ENot exp)  ty )         = compileNotExp exp
+compileExp ( ETyped ( ENegNum exp)  ty )      = compileNegNumExp exp
+compileExp ( ETyped ( EPlusNum exp)  ty )     = compileExp exp                                             
 compileExp ( ETyped ( EIdent ident)  ty )     = do
                                                   dirMem <- lookupVar ident
                                                   case ty of 
@@ -227,7 +234,7 @@ compileExp ( ETyped ( EIdent ident)  ty )     = do
                                                     Type_real ->  emit $ "dload " ++ dirMem
                                                     Type_bool -> emit $ "iload " ++ dirMem
                                                     Type_string -> emit $ "aload " ++ dirMem                                   
-compileExp (ETyped (EStr str) _)              = emit $ "ldc " ++ str
+compileExp (ETyped (EStr str) _)              = emit $ "ldc " ++ show str
 compileExp (ETyped (EInt int) _)              = emit $ "ldc " ++ show int
 compileExp (ETyped (EReal real) ty)           = emit $ "ldc2_w " ++ show real
 compileExp (ETyped ETrue ty)                  = emit $ "ldc 1"
@@ -244,6 +251,25 @@ compileExpAritmeticas exp1 exp2 ty op = do
                                           else
                                             error "Caso imposible"
 
+
+compileNegNumExp :: Exp -> State Env ()
+compileNegNumExp (ETyped exp ty) = do 
+                                    compileExp exp
+                                    if (ty == Type_integer) then
+                                      emit "ineg"
+                                    else if (ty == Type_real) then do
+                                      emit "dneg"
+                                    else
+                                      error "Caso imposible"
+compileNotExp :: Exp -> State Env ()
+compileNotExp (ETyped exp ty)    = do
+                                    false <- newLabel
+                                    compileExp exp
+                                    emit $ "dup"
+                                    emit $ "ifeq " ++ false
+                                    emit $ "bipush 1"
+                                    emit $ "pop"
+                                    emit $ false ++ ":"
 
 compileExpCompare :: Cmp -> Exp -> Exp -> State Env ()
 compileExpCompare cmp (ETyped exp1 ty1) exp2 = do -- solo necesito un tipo por el typechecker
@@ -286,3 +312,7 @@ compileExpBool And exp1 exp2  = do
 
 --java -jar jasmin.jar HelloWorld.j
 --java HelloWorld
+
+-- ./cpas good/Good01.pas
+-- java -jar jasmin.jar good/Good01.j
+-- java Good01
